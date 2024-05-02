@@ -1,0 +1,26 @@
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = ["flit_core >=3.2,<4"]
+
+[project]
+authors = [
+  {name = "mwop", email = "pkirwin@ece.ubc.ca"}
+]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Operating System :: OS Independent"
+]
+dependencies = [
+  "numpy==1.26.4"
+]
+description = "functions for designing MW-optical transducers"
+keywords = ["python"]
+license = {file = "LICENSE"}
+name = "mwop"
+readme = "README.md"
+requires-python = ">=3.10"
+version = "0.0.1"

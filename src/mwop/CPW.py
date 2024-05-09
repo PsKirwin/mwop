@@ -22,11 +22,50 @@ mpm.mp.dps = 1000
 #  calculates the kinetic, geometric, and total line inductances (per unit length) of the CPW. We assume that all substrate layers are non-magnetic, that is, their relative permeability is 1. width and gap must have the same units. Kinetic inductance is calculated with an approximation that is strictly speaking only valid for gap >> width. Using this approximation outside of this limit systematically underestimates the kinetic inductance.
 # takes the CPW width and gap, and the sheet inductance of the SC, as arguments.
 def inductances(width,gap,sheet_inductance):
+    """calculates the kinetic, geometric, and total line inductances (per unit length) of the CPW. 
+    We assume that all substrate layers are non-magnetic, that is, their relative permeability is 1. 
+    width and gap must have the same units. Kinetic inductance is calculated with an approximation that 
+    is strictly speaking only valid for gap >> width. Using this approximation outside of this limit 
+    systematically underestimates the kinetic inductance.
+    
+    arguments:
+    width: CPW centre trace width
+    gap: CPW gap (assumed equal on both gaps)
+    sheet_inductance: sheet inductance of the SC film, arising from kinetic inductance.
+    """
     k0 = width/(width + 2*gap) # modulus of the elliptic integral for infinite layer
-    k0p = np.sqrt(1-k0**2) # complimentary modulus
-    mpm.ellipk(k0**2)
+    k0p = mpm.sqrt(1-k0**2) # complimentary modulus
     inductance_geo = mu_0/4 * mpm.ellipk(k0p**2) / mpm.ellipk(k0**2) # magnetic inductance [H/m]
     inductance_kinetic = sheet_inductance / width # kinetic inductance [H/m]
+    inductance_tot = inductance_kinetic + inductance_geo # total inductance [H/m]
+    return inductance_kinetic, inductance_geo, inductance_tot
+
+
+def inductances_new(width,gap,sheet_inductance,thickness):
+    """calculates the kinetic, geometric, and total line inductances (per unit length) of the CPW. 
+    We assume that all substrate layers are non-magnetic, that is, their relative permeability is 1. 
+    width and gap must have the same units. Kinetic inductance is calculated with approximate
+    formulae (eqs from Collin). accurate to within 10 % for a thickness t < 0.05*w and w/(w+2*gap) < 0.8
+    
+    arguments:
+    width: CPW centre trace width
+    gap: CPW gap (assumed equal on both gaps)
+    sheet_inductance: sheet inductance of the SC film, arising from kinetic inductance.
+    thickness: SC film thickness
+    """
+    
+    k0 = width/(width + 2*gap) # modulus of the elliptic integral for infinite layer
+    if (k0 > 0.8):
+        print("k is greater than 0.8, kinetic inductance is inaccurate")
+    if (thickness > 0.05*width):
+        print("thickness/width is greater than 0.05, kinetic inductance is inaccurate")
+    k0p = np.sqrt(1-k0**2) # complimentary modulus
+    inductance_geo = mu_0/4 * mpm.ellipk(k0p**2) / mpm.ellipk(k0**2) # magnetic inductance [H/m]
+    gc =1/4/width/(1-k0**2)/mpm.ellipk(k0**2)**2 * (mpm.pi + mpm.ln(4*mpm.pi*width/thickness) - k0*mpm.ln((1+k0)/(1-k0))) # geometric factor arising from the centre trace
+    gg = k0/4/width/(1-k0**2)/mpm.ellipk(k0**2)**2 * (mpm.pi + mpm.ln(4*mpm.pi*(width+2*gap)/thickness) - 1/k0*mpm.ln((1+k0)/(1-k0))) # geometric factor arising from the ground plane
+    #print(gg)
+    #print(gc)
+    inductance_kinetic = sheet_inductance * (gc+gg) # kinetic inductance [H/m]
     inductance_tot = inductance_kinetic + inductance_geo # total inductance [H/m]
     return inductance_kinetic, inductance_geo, inductance_tot
 
@@ -96,7 +135,14 @@ def total_cap(width,gap,substrate:dict,superstrate:dict) -> float:
 def calc_Z0(width,gap,sheet_inductance,substrate:dict,superstrate:dict):
     capacitance = total_cap(width,gap,substrate,superstrate)
     __,__,inductance = inductances(width,gap,sheet_inductance)
-    Z0 = np.sqrt(inductance/capacitance)
+    Z0 = mpm.sqrt(inductance/capacitance)
+    return Z0
+
+# calculate characteristic impedance,including the effects of kinetic inductance, with new KI calc
+def calc_Z0_new(width,gap,sheet_inductance,thickness,substrate:dict,superstrate:dict):
+    capacitance = total_cap(width,gap,substrate,superstrate)
+    __,__,inductance = inductances_new(width,gap,sheet_inductance,thickness)
+    Z0 = mpm.sqrt(inductance/capacitance)
     return Z0
 
 # calculate dielectric constant, which includes the effects of kinetic inductance.
